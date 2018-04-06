@@ -1,0 +1,28 @@
+---
+title: "Null Distribution Histogram"
+author: "Julia Craft"
+date: "April 4, 2018"
+output: html_document
+---
+
+**anything in all caps needs to be replaced with the appropriate data**
+
+## Load libraries
+
+```{r}
+library(ggplot2)
+library(readr)
+```
+
+## Parse data 
+
+```{r}
+Evalues <- read_tsv("FILENAME")
+```
+
+## Plot data
+
+```{r}
+Evalueshist <- ggplot(data=Evalues, aes(Evalues$DESIREDCOLUMN)) + geom_histogram()
+Evalueshist <- Evalueshist + labs(title="TITLE", x="E-value", y="Count")
+```
