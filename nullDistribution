@@ -3,6 +3,9 @@
 import sys
 import random
 from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio.Alphabet import IUPAC
 
 
 def randomizeSeq(seq):
@@ -32,11 +35,19 @@ modifiedSeqs = []
 targetFastaSeqs = SeqIO.parse(open(targetFile),'fasta')
 relativeFastaSeqs = SeqIO.parse(open(relativeFile),'fasta')
 
+count = 0
+
 for fasta in targetFastaSeqs:
+    count += 1
     name, sequence = fasta.id, str(fasta.seq)
     targetSeqs[name] = sequence
     randomized = randomizeSeq(sequence)
-    modifiedSeqs.append(randomized)
+    randName = "Protein sequence " + str(count)
+    record = SeqRecord(Seq(randomized, IUPAC.protein),id=randName)
+    modifiedSeqs.append(record)
+
+with open("randomSeqs.fasta", "w") as outputHandle:
+    SeqIO.write(modifiedSeqs, outputHandle, "fasta")
 
 for fasta in relativeFastaSeqs:
     name, sequence = fasta.id, str(fasta.seq)
