@@ -17,12 +17,13 @@ library(readr)
 ## Parse data 
 
 ```{r}
-Evalues <- read_tsv("FILENAME")
+Evalues <- read_tsv("output23.txt")
 ```
 
 ## Plot data
 
 ```{r}
-Evalueshist <- ggplot(data=Evalues, aes(Evalues$DESIREDCOLUMN)) + geom_histogram()
-Evalueshist <- Evalueshist + labs(title="TITLE", x="E-value", y="Count")
+Evalueshist <- ggplot(data=Evalues, aes(Evalues$'0.99')) + geom_histogram()
+Evalueshist <- Evalueshist + labs(title="Null Distribution of E-values", x="E-value", y="Count")
+Evalueshist
 ```
