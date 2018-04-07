@@ -24,6 +24,7 @@ Evalues <- read_tsv("output23.txt")
 
 ```{r}
 Evalueshist <- ggplot(data=Evalues, aes(Evalues$'0.99')) + geom_histogram()
-Evalueshist <- Evalueshist + labs(title="Null Distribution of E-values", x="E-value", y="Count")
+Evalueshist <- Evalueshist + labs(title="Null Distribution of E-values", x="E-value", y="Count")+ 
+  geom_histogram(color="black", fill="white")
 Evalueshist
 ```
