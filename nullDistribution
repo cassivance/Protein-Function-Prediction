@@ -20,13 +20,8 @@ def randomizeSeq(seq):
         i = i + 1
     return(''.join(newSeq))
 
-def alignSeqs(targetSeq, relativeSeq):
-    #use blast to align seqs
-    print("temp")
-
-targetFile = "target.208963.fasta"
-#change this to the actual relative fasta file when available
-relativeFile = "target.237561.fasta"
+targetFile = "target.237561.fasta"
+relativeFile = "ncbi-blast-2.7.1+/bin/Relative.fasta"
 targetSeqs = {}
 relativeSeqs = {}
 modifiedSeqs = []
@@ -42,7 +37,7 @@ for fasta in targetFastaSeqs:
     name, sequence = fasta.id, str(fasta.seq)
     targetSeqs[name] = sequence
     randomized = randomizeSeq(sequence)
-    randName = "Protein sequence " + str(count)
+    randName = "Protein" + str(count)
     record = SeqRecord(Seq(randomized, IUPAC.protein),id=randName)
     modifiedSeqs.append(record)
 
