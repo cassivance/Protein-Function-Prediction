@@ -35,10 +35,8 @@ colnames(NullEvalues) <- c("qseqid", "sseqid", "pident", "length", "mismatch", "
 Evalues <- arrange(Evalues, evalue)
 NullEvalues <- arrange(NullEvalues, evalue)
 
-# If we want equal number of points include these two lines
-Evalues <- head(Evalues, n=56000)
-NullEvalues <- head(NullEvalues, n=56000)
-
+nrow(Evalues)
+nrow(NullEvalues)
 
 cols <- c("null"="#f04546","relative"="#3591d1")
 ggplot() + 
@@ -48,22 +46,35 @@ ggplot() +
     scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)
 ```
 
+```{r}
+nullLessThanOne <- select(NullEvalues, qseqid, sseqid, evalue)
+nullLessThanOne <-nullLessThanOne[(nullLessThanOne[,3]<.05),]
+
+relLessThanOne <- select(Evalues, qseqid, sseqid, evalue)
+relLessThanOne <-relLessThanOne[(relLessThanOne[,3]<.05),]
+
+cols <- c("null"="#f04546","relative"="#3591d1")
+ggplot() + 
+    geom_histogram(data=relLessThanOne, aes(relLessThanOne$evalue, fill="relative") , alpha = .3) +
+    geom_histogram(data=nullLessThanOne, aes(nullLessThanOne$evalue, fill="null"), alpha = .3) +
+    labs(title="Null Distribution and Alignment of Candida and Relative Sequences for E-values less than 1.0", x="E-value", y="Count")+
+    scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)
+```
+
 ## Manhattan plots
 
 ```{r}
-manhattanEval <- select(Evalues, qseqid, sseqid, evalue)
-manhattanEval <-manhattanEval[(manhattanEval[,3]<1),]
 targetGenes <- c()
 relativeGenes <- c()
 
-for(i in 1:length(manhattanEval$qseqid)){
-  targetGenes <- c(targetGenes, as.integer(substr(manhattanEval$qseqid[i], 8, 14)))
-  relativeGenes <- c(relativeGenes, as.integer(substr(manhattanEval$sseqid[i], 6, 10)))
+for(i in 1:length(relLessThanOne$qseqid)){
+  targetGenes <- c(targetGenes, as.integer(substr(relLessThanOne$qseqid[i], 8, 14)))
+  relativeGenes <- c(relativeGenes, as.integer(substr(relLessThanOne$sseqid[i], 6, 10)))
 }
-manhattanEval$target <- targetGenes
-manhattanEval$relative <- relativeGenes
-manhattanEval
-manhattan(manhattanEval,main = "E-valules less than 1.0 for Relative Sequences", ylim = c(0, 120) ,chr = "relative", bp = "target", p = "evalue", col = c("lightcoral", "lightblue"), ylab = "-log10(evalue)", xlab= "Relative Sequences") 
+relLessThanOne$target <- targetGenes
+relLessThanOne$relative <- relativeGenes
+relLessThanOne
+manhattan(relLessThanOne,main = "E-valules less than 1.0 for Relative Sequences", ylim = c(0, 120) ,chr = "relative", bp = "target", p = "evalue", col = c("lightcoral", "lightblue"), ylab = "-log10(evalue)", xlab= "Relative Sequences") 
 
 ```
 
