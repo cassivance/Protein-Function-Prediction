@@ -48,16 +48,19 @@ ggplot() +
 
 ```{r}
 nullLessThanOne <- select(NullEvalues, qseqid, sseqid, evalue)
-nullLessThanOne <-nullLessThanOne[(nullLessThanOne[,3]<.05),]
+nullLessThanOne <-nullLessThanOne[(nullLessThanOne[,3]< .1),]
 
 relLessThanOne <- select(Evalues, qseqid, sseqid, evalue)
-relLessThanOne <-relLessThanOne[(relLessThanOne[,3]<.05),]
+relLessThanOne <-relLessThanOne[(relLessThanOne[,3]< .1),]
+
+pValue = .05/nrow(nullLessThanOne)
+pValue
 
 cols <- c("null"="#f04546","relative"="#3591d1")
 ggplot() + 
     geom_histogram(data=relLessThanOne, aes(relLessThanOne$evalue, fill="relative") , alpha = .3) +
     geom_histogram(data=nullLessThanOne, aes(nullLessThanOne$evalue, fill="null"), alpha = .3) +
-    labs(title="Null Distribution and Alignment of Candida and Relative Sequences for E-values less than 1.0", x="E-value", y="Count")+
+    labs(title="Null Distribution and Alignment of Candida and Relative Sequences for E-values less than .1", x="E-value", y="Count")+
     scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)
 ```
 
@@ -74,7 +77,7 @@ for(i in 1:length(relLessThanOne$qseqid)){
 relLessThanOne$target <- targetGenes
 relLessThanOne$relative <- relativeGenes
 relLessThanOne
-manhattan(relLessThanOne,main = "E-valules less than 1.0 for Relative Sequences", ylim = c(0, 120) ,chr = "relative", bp = "target", p = "evalue", col = c("lightcoral", "lightblue"), ylab = "-log10(evalue)", xlab= "Relative Sequences") 
+manhattan(relLessThanOne,main = "E-valules less than 1.0 for Relative Sequences", ylim = c(0, 100) ,chr = "relative", bp = "target", p = "evalue", col = c("lightcoral", "lightblue"), ylab = "-log10(evalue)", xlab= "Relative Sequences") 
 
 ```
 
