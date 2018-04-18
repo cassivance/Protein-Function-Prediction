@@ -10,7 +10,7 @@ output: html_document
 ## Load libraries
 
 ```{r}
-install.packages("qqman")
+#install.packages("qqman")
 library(ggplot2)
 library(readr)
 library(dplyr)
@@ -67,23 +67,62 @@ ggplot() +
 ## Manhattan plots
 
 ```{r}
-targetGenes <- c()
-relativeGenes <- c()
+targetSeqs <- c()
+relativeSeqs <- c()
 
 for(i in 1:length(relLessThanOne$qseqid)){
-  targetGenes <- c(targetGenes, as.integer(substr(relLessThanOne$qseqid[i], 8, 14)))
-  relativeGenes <- c(relativeGenes, as.integer(substr(relLessThanOne$sseqid[i], 6, 10)))
+  targetSeqs <- c(targetSeqs, as.integer(substr(relLessThanOne$qseqid[i], 8, 14)))
+  relativeSeqs <- c(relativeSeqs, as.integer(substr(relLessThanOne$sseqid[i], 6, 10)))
 }
-relLessThanOne$target <- targetGenes
-relLessThanOne$relative <- relativeGenes
+relLessThanOne$target <- targetSeqs
+relLessThanOne$relative <- relativeSeqs
 relLessThanOne
-manhattan(relLessThanOne,main = "E-valules less than 1.0 for Relative Sequences", ylim = c(0, 100) ,chr = "relative", bp = "target", p = "evalue", col = c("lightcoral", "lightblue"), ylab = "-log10(evalue)", xlab= "Relative Sequences") 
+manhattan(relLessThanOne,main = "E-valules less than 0.1 for Relative Sequences", ylim = c(0, 100) ,chr = "relative", bp = "target", p = "evalue", col = c("lightcoral", "lightblue"), ylab = "-log10(evalue)", xlab= "Relative Sequences") 
 
 ```
 
 
+```{r}
+positiveAlignments <- read_tsv("outputPositive.txt")
+negativeAlignments <- read_tsv("outputNegative.txt")
+
+#Give column names to the null and relative data frames
+colnames(positiveAlignments) <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen","qstart", "qend", "sstart", "send", "evalue", "bitscore")
+colnames(negativeAlignments) <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen","qstart", "qend", "sstart", "send", "evalue", "bitscore")
+
+#positiveAlignments <- select(positiveAlignments, qseqid, sseqid, evalue)
+#positiveAlignments <-positiveAlignments[(positiveAlignments[,3]< .1),]
+
+#negativeAlignments <- select(negativeAlignments, qseqid, sseqid, evalue)
+#negativeAlignments <-negativeAlignments[(negativeAlignments[,3]< .1),]
 
 
+cols <- c("negative"="#f04546","positive"="#3591d1" )
+ggplot() + 
+    geom_histogram(data=positiveAlignments, aes(positiveAlignments$evalue, fill="positive") , alpha = .3) +
+    geom_histogram(data=negativeAlignments, aes(negativeAlignments$evalue, fill="negative"), alpha = .3)+
+    labs(title="Evalues for validation species alignment", x="E-value", y="Count")+
+    scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)
+
+positiveAlignments$fromSpecies = c("positive")
+negativeAlignments$fromSpecies = c("negative")
+allResults <- rbind(positiveAlignments, negativeAlignments)
+
+
+positiveSeqs <- c()
+relativeSeqs <- c()
+
+for(i in 1:length(allResults$qseqid)){
+  relativeSeqs <- c(relativeSeqs, as.integer(substr(allResults$sseqid[i], 6, 10)))
+  positiveSeqs <- c(positiveSeqs, as.integer(allResults$qseqid[i]))
+}
+allResults$qseqid <- positiveSeqs
+allResults$relative <- relativeSeqs
+allResults <- arrange(allResults, evalue)
+allResults
+manhattan(allResults,main = "E-values for Validation Alignments", ylim = c(-2, 10) ,chr = "relative", bp = "qseqid", p = "evalue", col = c("lightcoral"), ylab = "-log10(evalue)", xlab= "Relative Sequences", snp = "fromSpecies", highlight = c("positive")) 
+
+```
 
 
 
