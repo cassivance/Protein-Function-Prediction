@@ -35,32 +35,83 @@ colnames(NullEvalues) <- c("qseqid", "sseqid", "pident", "length", "mismatch", "
 Evalues <- arrange(Evalues, evalue)
 NullEvalues <- arrange(NullEvalues, evalue)
 
-nrow(Evalues)
-nrow(NullEvalues)
+currentEvalues <- as.double(Evalues$evalue)
+currentNullEvalues <- as.double(NullEvalues$evalue)
 
-cols <- c("null"="#f04546","relative"="#3591d1")
+cutOffEvalue <- .1
+currentNullEvalues <- currentNullEvalues[currentNullEvalues < cutOffEvalue]
+currentEvalues <- currentEvalues[currentEvalues < cutOffEvalue]
+nullPercentage = length(currentNullEvalues)/(length(currentNullEvalues) + length(currentEvalues))
+
+allEvalues <- c(currentEvalues, currentNullEvalues)
+allEvalues <- sort(allEvalues)
+
+nullPercentage <- nrow(NullEvalues)/(nrow(NullEvalues) + nrow(Evalues))
+iterator <- length(allEvalues)
+
+smallest <- 1
+smallestEvalue <- 100
+
+while ((nullPercentage > .05) && (iterator >= 1)){
+  iterator <- iterator - 1
+  cutOffEvalue <- as.double(allEvalues[iterator])
+  currentEvalues <- currentEvalues[currentEvalues < cutOffEvalue]
+  currentNullEvalues <- currentNullEvalues[currentNullEvalues < cutOffEvalue]
+  nullPercentage = (length(currentNullEvalues) + 1)/(length(currentNullEvalues) + length(currentEvalues) + 1)
+  if(nullPercentage < smallest){
+    smallest <- nullPercentage
+    smallestEvalue <- cutOffEvalue
+  }
+}
+smallest
+smallestEvalue
+```
+
+
+```{r}
+
+#Make a histogram with only the null distribution
+cols <- c("Shuffled to Relative"="#f04546")
+ggplot() +
+    geom_histogram(data=NullEvalues, aes(NullEvalues$evalue, fill="Shuffled to Relative"), alpha = .3) +
+    labs(title="Null Distribution", x="E-value", y="Count")+
+    scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)
+
+#Make a histogram comparing the null and relative alignments with all returned data (E-value < 10)
+cols <- c("Shuffled to Relative"="#f04546","Target to Relative"="#3591d1")
 ggplot() + 
-    geom_histogram(data=Evalues, aes(Evalues$evalue, fill="relative") , alpha = .3) +
-    geom_histogram(data=NullEvalues, aes(NullEvalues$evalue, fill="null"), alpha = .3) +
-    labs(title="Null Distribution and Alignment of Candida and Relative Sequences", x="E-value", y="Count")+
+    geom_histogram(data=Evalues, aes(Evalues$evalue, fill="Target to Relative") , alpha = .3) +
+    geom_histogram(data=NullEvalues, aes(NullEvalues$evalue, fill="Shuffled to Relative"), alpha = .3) +
+    labs(title="Null Distribution and Results Distribution", x="E-value", y="Count")+
     scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)
 ```
 
 ```{r}
+#
 nullLessThanOne <- select(NullEvalues, qseqid, sseqid, evalue)
-nullLessThanOne <-nullLessThanOne[(nullLessThanOne[,3]< .1),]
+nullLessThanOne <-nullLessThanOne[(nullLessThanOne[,3]< 0.1),]
 
 relLessThanOne <- select(Evalues, qseqid, sseqid, evalue)
-relLessThanOne <-relLessThanOne[(relLessThanOne[,3]< .1),]
+relLessThanOne <-relLessThanOne[(relLessThanOne[,3]< 0.1),]
 
 pValue = .05/nrow(nullLessThanOne)
 pValue
 
-cols <- c("null"="#f04546","relative"="#3591d1")
+#Make a histogram with only the null distribution
+cols <- c("Shuffled to Relative"="#f04546")
+ggplot() +
+    geom_histogram(data=nullLessThanOne, aes(nullLessThanOne$evalue, fill="Shuffled to Relative"), alpha = .3) +
+    labs(title="Null Distribution of E-values Below 0.1", x="E-value", y="Count")+
+    scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols) + 
+    theme(axis.text=element_text(size=12), axis.title=element_text(size=14,face="bold")) + 
+    geom_vline(aes(xintercept= smallestEvalue), coulour = "lightblue", linetype = "dashed")
+
+#Make a histogram comparing the null and target alignments
+cols <- c("Shuffled to Relative"="#f04546","Target to Relative"="#3591d1")
 ggplot() + 
-    geom_histogram(data=relLessThanOne, aes(relLessThanOne$evalue, fill="relative") , alpha = .3) +
-    geom_histogram(data=nullLessThanOne, aes(nullLessThanOne$evalue, fill="null"), alpha = .3) +
-    labs(title="Null Distribution and Alignment of Candida and Relative Sequences for E-values less than .1", x="E-value", y="Count")+
+    geom_histogram(data=relLessThanOne, aes(relLessThanOne$evalue, fill="Target to Relative") , alpha = .3) +
+    geom_histogram(data=nullLessThanOne, aes(nullLessThanOne$evalue, fill="Shuffled to Relative"), alpha = .3) +
+    labs(title="Null Distribution and Results Distribution for E-values Below 0.1", x="E-value", y="Count")+
     scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)
 ```
 
@@ -77,7 +128,7 @@ for(i in 1:length(relLessThanOne$qseqid)){
 relLessThanOne$target <- targetSeqs
 relLessThanOne$relative <- relativeSeqs
 relLessThanOne
-manhattan(relLessThanOne,main = "E-valules less than 0.1 for Relative Sequences", ylim = c(0, 100) ,chr = "relative", bp = "target", p = "evalue", col = c("lightcoral", "lightblue"), ylab = "-log10(evalue)", xlab= "Relative Sequences") 
+manhattan(relLessThanOne,main = "PLACEHOLDER", ylim = c(0, 100) ,chr = "relative", bp = "target", p = "evalue", col = c("lightcoral", "lightblue"), ylab = "-log10(E-value)", xlab= "Relative Sequences",suggestiveline = F, genomewideline = F, chrlabs = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")) 
 
 ```
 
