@@ -31,18 +31,19 @@ Evalues <- read_tsv("outputCandida.txt")
 colnames(Evalues) <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen","qstart", "qend", "sstart", "send", "evalue", "bitscore")
 colnames(NullEvalues) <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen","qstart", "qend", "sstart", "send", "evalue", "bitscore")
 
-#order the data frames from smallest to largest evalues
+#order the data frames from smallest to largest evalues and put into lists
 Evalues <- arrange(Evalues, evalue)
 NullEvalues <- arrange(NullEvalues, evalue)
-
 currentEvalues <- as.double(Evalues$evalue)
 currentNullEvalues <- as.double(NullEvalues$evalue)
 
+#Pair down lists to possibly significant values
 cutOffEvalue <- .1
 currentNullEvalues <- currentNullEvalues[currentNullEvalues < cutOffEvalue]
 currentEvalues <- currentEvalues[currentEvalues < cutOffEvalue]
 nullPercentage = length(currentNullEvalues)/(length(currentNullEvalues) + length(currentEvalues))
 
+#Make list of all evalues (null and result) and order smallest to largest
 allEvalues <- c(currentEvalues, currentNullEvalues)
 allEvalues <- sort(allEvalues)
 
@@ -51,7 +52,9 @@ iterator <- length(allEvalues)
 
 smallest <- 1
 smallestEvalue <- 100
+smallestEvalueList <- c()
 
+#Look for FDR < .05. If not found, set significant evalue based on lowest FDR
 while ((nullPercentage > .05) && (iterator >= 1)){
   iterator <- iterator - 1
   cutOffEvalue <- as.double(allEvalues[iterator])
@@ -61,16 +64,18 @@ while ((nullPercentage > .05) && (iterator >= 1)){
   if(nullPercentage < smallest){
     smallest <- nullPercentage
     smallestEvalue <- cutOffEvalue
+    smallestEvalueList <- currentEvalues
   }
 }
 smallest
 smallestEvalue
+length(smallestEvalueList)
 ```
 
 
 ```{r}
 
-#Make a histogram with only the null distribution
+#Make a histogram with the null distribution of all data returned from blast
 cols <- c("Shuffled to Relative"="#f04546")
 ggplot() +
     geom_histogram(data=NullEvalues, aes(NullEvalues$evalue, fill="Shuffled to Relative"), alpha = .3) +
@@ -87,32 +92,36 @@ ggplot() +
 ```
 
 ```{r}
-#
+#Filter data to include only alignments with E-values less than .1
 nullLessThanOne <- select(NullEvalues, qseqid, sseqid, evalue)
 nullLessThanOne <-nullLessThanOne[(nullLessThanOne[,3]< 0.1),]
-
 relLessThanOne <- select(Evalues, qseqid, sseqid, evalue)
 relLessThanOne <-relLessThanOne[(relLessThanOne[,3]< 0.1),]
 
-pValue = .05/nrow(nullLessThanOne)
-pValue
-
-#Make a histogram with only the null distribution
+#Make a histogram with null distribution of E-values less than 0.1
 cols <- c("Shuffled to Relative"="#f04546")
+
+png("cutOffNullDistribution.png", width = 12, height = 7, units = 'in', res = 300)
 ggplot() +
     geom_histogram(data=nullLessThanOne, aes(nullLessThanOne$evalue, fill="Shuffled to Relative"), alpha = .3) +
-    labs(title="Null Distribution of E-values Below 0.1", x="E-value", y="Count")+
-    scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols) + 
-    theme(axis.text=element_text(size=12), axis.title=element_text(size=14,face="bold")) + 
-    geom_vline(aes(xintercept= smallestEvalue), coulour = "lightblue", linetype = "dashed")
+    labs(title="Null Distribution of E-values Below 0.1", x="E-value", y="Count") +
+    scale_colour_manual(values=cols) + 
+    theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"), plot.title = element_text(size=22,face="bold"), legend.text=element_text(size=14), legend.position="bottom", legend.title=element_blank()) + 
+    geom_vline(aes(xintercept= smallestEvalue), linetype = "dashed")
 
-#Make a histogram comparing the null and target alignments
+dev.off()
+
+#Make a histogram comparing the null and target alignments of E-values less than 0.1
+png("nullWithResults.png", width = 12, height = 7, units = 'in', res = 300)
 cols <- c("Shuffled to Relative"="#f04546","Target to Relative"="#3591d1")
 ggplot() + 
     geom_histogram(data=relLessThanOne, aes(relLessThanOne$evalue, fill="Target to Relative") , alpha = .3) +
     geom_histogram(data=nullLessThanOne, aes(nullLessThanOne$evalue, fill="Shuffled to Relative"), alpha = .3) +
     labs(title="Null Distribution and Results Distribution for E-values Below 0.1", x="E-value", y="Count")+
-    scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)
+    scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)+ 
+    theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"), plot.title = element_text(size=22,face="bold"), legend.text=element_text(size=14), legend.position="bottom", legend.title=element_blank()) + 
+    geom_vline(aes(xintercept= smallestEvalue), linetype = "dashed")
+dev.off()
 ```
 
 ## Manhattan plots
@@ -121,15 +130,24 @@ ggplot() +
 targetSeqs <- c()
 relativeSeqs <- c()
 
+#Make protein sequence identifiers numerical for qqman
 for(i in 1:length(relLessThanOne$qseqid)){
   targetSeqs <- c(targetSeqs, as.integer(substr(relLessThanOne$qseqid[i], 8, 14)))
   relativeSeqs <- c(relativeSeqs, as.integer(substr(relLessThanOne$sseqid[i], 6, 10)))
 }
 relLessThanOne$target <- targetSeqs
 relLessThanOne$relative <- relativeSeqs
-relLessThanOne
-manhattan(relLessThanOne,main = "PLACEHOLDER", ylim = c(0, 100) ,chr = "relative", bp = "target", p = "evalue", col = c("lightcoral", "lightblue"), ylab = "-log10(E-value)", xlab= "Relative Sequences",suggestiveline = F, genomewideline = F, chrlabs = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")) 
 
+#Identify alignments of interest
+relLessThanOne$snp <- c("no")
+relLessThanOne$snp[21] <- "yes"
+relLessThanOne$snp[23] <- "yes"
+relLessThanOne$snp[31] <- "yes"
+
+#Make manhattan plot of Evalues showing which relative sequence it was aligned to
+png("targetManhattan.png", width = 12, height = 7, units = 'in', res = 300)
+manhattan(relLessThanOne,main = "Alignments of Target to Relative Sequences", cex.lab = 1.5, cex.main = 2, ylim = c(0, 100) ,chr = "relative", bp = "target", p = "evalue", ylab = "-log10(E-value)", xlab= "Relative Sequences",suggestiveline = -log10(smallestEvalue), genomewideline = F, chrlabs = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), snp = "snp", highlight = c("yes")) 
+dev.off()
 ```
 
 
@@ -137,23 +155,20 @@ manhattan(relLessThanOne,main = "PLACEHOLDER", ylim = c(0, 100) ,chr = "relative
 positiveAlignments <- read_tsv("outputPositive.txt")
 negativeAlignments <- read_tsv("outputNegative.txt")
 
-#Give column names to the null and relative data frames
+#Give column names to the validaiton data
 colnames(positiveAlignments) <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen","qstart", "qend", "sstart", "send", "evalue", "bitscore")
 colnames(negativeAlignments) <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen","qstart", "qend", "sstart", "send", "evalue", "bitscore")
 
-#positiveAlignments <- select(positiveAlignments, qseqid, sseqid, evalue)
-#positiveAlignments <-positiveAlignments[(positiveAlignments[,3]< .1),]
-
-#negativeAlignments <- select(negativeAlignments, qseqid, sseqid, evalue)
-#negativeAlignments <-negativeAlignments[(negativeAlignments[,3]< .1),]
-
-
-cols <- c("negative"="#f04546","positive"="#3591d1" )
+#plot biofilm positive sequences against biofilm negative sequences
+png("validationAlignments.png", width = 12, height = 7, units = 'in', res = 300)
+cols <- c("Non-biofilm Confirmed to Relative"="#f04546","Biofilm Confirmed to Relative"="#3591d1" )
 ggplot() + 
-    geom_histogram(data=positiveAlignments, aes(positiveAlignments$evalue, fill="positive") , alpha = .3) +
-    geom_histogram(data=negativeAlignments, aes(negativeAlignments$evalue, fill="negative"), alpha = .3)+
-    labs(title="Evalues for validation species alignment", x="E-value", y="Count")+
-    scale_colour_manual(values=cols) + scale_fill_manual(name="Alignments",values=cols)
+    geom_histogram(data=positiveAlignments, aes(positiveAlignments$evalue, fill="Biofilm Confirmed to Relative") , alpha = .3) +
+    geom_histogram(data=negativeAlignments, aes(negativeAlignments$evalue, fill="Non-biofilm Confirmed to Relative"), alpha = .3)+
+    labs(title="Evalues for Validation Alignment", x="E-value", y="Count")+
+    scale_colour_manual(values=cols) + 
+    theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"), plot.title = element_text(size=22,face="bold"), legend.text=element_text(size=14), legend.position="bottom", legend.title=element_blank())
+dev.off()
 
 positiveAlignments$fromSpecies = c("positive")
 negativeAlignments$fromSpecies = c("negative")
@@ -163,6 +178,7 @@ allResults <- rbind(positiveAlignments, negativeAlignments)
 positiveSeqs <- c()
 relativeSeqs <- c()
 
+#Make sequence identifiers numeric for qqman
 for(i in 1:length(allResults$qseqid)){
   relativeSeqs <- c(relativeSeqs, as.integer(substr(allResults$sseqid[i], 6, 10)))
   positiveSeqs <- c(positiveSeqs, as.integer(allResults$qseqid[i]))
@@ -170,9 +186,11 @@ for(i in 1:length(allResults$qseqid)){
 allResults$qseqid <- positiveSeqs
 allResults$relative <- relativeSeqs
 allResults <- arrange(allResults, evalue)
-allResults
-manhattan(allResults,main = "E-values for Validation Alignments", ylim = c(-2, 10) ,chr = "relative", bp = "qseqid", p = "evalue", col = c("lightcoral"), ylab = "-log10(evalue)", xlab= "Relative Sequences", snp = "fromSpecies", highlight = c("positive")) 
 
+#Make manhattan plot showing which proteins were aligned to make E-values
+png("validationManhattan.png", width = 12, height = 7, units = 'in', res = 300)
+manhattan(allResults,main = "Alignments of Validation to Relative Sequences", cex.lab = 1.5, cex.main = 2, ylim = c(-2, 10) ,chr = "relative", bp = "qseqid", p = "evalue", ylab = "-log10(E-value)", xlab= "Relative Sequences", snp = "fromSpecies", highlight = c("positive"),suggestiveline = -log10(smallestEvalue), genomewideline = F, chrlabs = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")) 
+dev.off()
 ```
 
 
